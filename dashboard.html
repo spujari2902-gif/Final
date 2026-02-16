@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Construction Project Manager - Track budgets and expenses">
+    <meta name="theme-color" content="#667eea">
+    <link rel="manifest" href="/manifest.json">
+    <link rel="icon" type="image/png" href="/static/icon-192.png">
+    <link rel="apple-touch-icon" href="/static/icon-192.png">
+    <title>Construction Project Dashboard</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+        }
+        .navbar {
+            background: #333;
+            color: white;
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar h1 {
+            font-size: 24px;
+        }
+        .logout-btn {
+            background: #e74c3c;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+        .logout-btn:hover {
+            background: #c0392b;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 30px auto;
+            padding: 0 20px;
+        }
+        .user-info {
+            background: white;
+            padding: 15px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        .chart-section {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+            text-align: center;
+        }
+        .chart-section img {
+            max-width: 100%;
+            height: auto;
+        }
+        .projects-section {
+            background: white;
+            padding: 20px;
+            border-radius: 5px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+        }
+        table th {
+            background: #667eea;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        table td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        table tr:hover {
+            background: #f9f9f9;
+        }
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e0e0e0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%;
+            background: #667eea;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+        }
+        .add-entry-form {
+            margin-top: 15px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 5px;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        input, textarea {
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            background: #667eea;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background: #764ba2;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <h1>Construction Project Dashboard</h1>
+        <a href="/logout" class="logout-btn">Logout</a>
+    </div>
+
+    <div class="container">
+        <div class="user-info">
+            <p><strong>Welcome, {{ current_user.username }}!</strong> | Role: <strong>{{ role }}</strong></p>
+        </div>
+
+        <div class="chart-section">
+            <h2>Project Expense Overview</h2>
+            {% if projects %}
+                <img src="/static/charts/chart.png?t={{ range(1, 9999) | random }}" alt="Project Expenses Chart">
+            {% else %}
+                <p>No projects available yet.</p>
+            {% endif %}
+        </div>
+
+        <div class="projects-section">
+            <h2>Projects</h2>
+            {% if projects %}
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Project Name</th>
+                            <th>Status</th>
+                            <th>Budget</th>
+                            <th>Spent</th>
+                            <th>Progress</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for project in projects %}
+                            {% set percentage = (project.spent / project.budget * 100) if project.budget > 0 else 0 %}
+                            <tr>
+                                <td>{{ project.name }}</td>
+                                <td>{{ project.status }}</td>
+                                <td>${{ "%.2f"|format(project.budget) }}</td>
+                                <td>${{ "%.2f"|format(project.spent) }}</td>
+                                <td>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" style="width: {{ percentage }}%; {% if percentage > 100 %}background: #e74c3c;{% endif %}">
+                                            {{ "%.0f"|format(percentage) }}%
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <form method="POST" action="/add_entry/{{ project.id }}" style="display: inline;">
+                                        <input type="hidden" name="project_id" value="{{ project.id }}">
+                                        <button type="button" onclick="showForm({{ project.id }})">Add Entry</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            <tr id="form-{{ project.id }}" style="display: none;">
+                                <td colspan="6">
+                                    <div class="add-entry-form">
+                                        <form method="POST" action="/add_entry/{{ project.id }}">
+                                            <div class="form-group">
+                                                <label>Description:</label>
+                                                <textarea name="description" required></textarea>
+                                            </div>
+                                            <div class="form-group">
+                                                <label>Amount:</label>
+                                                <input type="number" name="amount" step="0.01" required>
+                                            </div>
+                                            <button type="submit">Submit Entry</button>
+                                            <button type="button" onclick="hideForm({{ project.id }})">Cancel</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <p>No projects found.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <script>
+        function showForm(projectId) {
+            document.getElementById('form-' + projectId).style.display = 'table-row';
+        }
+        function hideForm(projectId) {
+            document.getElementById('form-' + projectId).style.display = 'none';
+        }
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('/sw.js').then(registration => {
+                console.log('Service Worker registered:', registration);
+            }).catch(error => {
+                console.log('Service Worker registration failed:', error);
+            });
+        }
+    </script>
+</body>
+</html>
